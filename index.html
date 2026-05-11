@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>বাংলাদেশ রেজাল্ট চেকার</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Noto+Serif+Bengali:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #1D9E75;
+    --green-light: #E1F5EE;
+    --green-dark: #085041;
+    --gold: #BA7517;
+    --gold-light: #FAEEDA;
+    --red: #E24B4A;
+    --red-light: #FCEBEB;
+    --bg: #f0f7f4;
+    --white: #ffffff;
+    --text: #1a2e25;
+    --muted: #5F5E5A;
+    --border: #c8e6da;
+    --radius: 14px;
+    --shadow: 0 4px 24px rgba(15,110,86,0.10);
+  }
+
+  body { font-family: 'Hind Siliguri', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  header { background: linear-gradient(135deg, #085041 0%, #0F6E56 60%, #1D9E75 100%); color: white; }
+  .header-top { display: flex; align-items: center; gap: 18px; padding: 22px 32px 18px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+  .logo-circle { width: 56px; height: 56px; background: rgba(255,255,255,0.18); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
+  .header-title h1 { font-family: 'Noto Serif Bengali', serif; font-size: 22px; font-weight: 600; }
+  .header-title p { font-size: 13px; opacity: 0.75; margin-top: 2px; }
+  .exam-tabs { display: flex; padding: 0 32px; overflow-x: auto; }
+  .exam-tab { padding: 14px 22px; font-size: 14px; font-family: 'Hind Siliguri', sans-serif; font-weight: 500; color: rgba(255,255,255,0.65); cursor: pointer; border: none; background: transparent; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
+  .exam-tab.active { color: #FAC775; border-bottom-color: #FAC775; }
+  .exam-tab:hover { color: white; }
+
+  main { max-width: 860px; margin: 0 auto; padding: 36px 20px 60px; }
+
+  .api-bar { background: #1a2e25; border-radius: 10px; padding: 12px 18px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .api-bar label { font-size: 12px; color: #9FE1CB; font-weight: 500; white-space: nowrap; }
+  .api-bar input { flex: 1; min-width: 200px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 7px 12px; color: white; font-size: 13px; font-family: monospace; outline: none; }
+  .api-bar input:focus { border-color: var(--green); }
+  .api-dot { width: 8px; height: 8px; border-radius: 50%; background: #E24B4A; flex-shrink: 0; }
+  .api-dot.connected { background: #1D9E75; }
+  .api-status { font-size: 12px; color: #9FE1CB; }
+
+  .search-card { background: var(--white); border-radius: var(--radius); padding: 32px 36px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 28px; }
+  .search-card h2 { font-family: 'Noto Serif Bengali', serif; font-size: 19px; font-weight: 600; color: var(--green-dark); margin-bottom: 22px; display: flex; align-items: center; gap: 10px; }
+  .search-card h2::before { content: ''; display: block; width: 4px; height: 22px; background: var(--green); border-radius: 2px; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 7px; }
+  .form-group label { font-size: 13px; font-weight: 500; color: var(--muted); }
+  .form-group input, .form-group select { padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 9px; font-size: 15px; font-family: 'Hind Siliguri', sans-serif; color: var(--text); background: var(--white); transition: border-color 0.2s, box-shadow 0.2s; outline: none; }
+  .form-group input:focus, .form-group select:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(29,158,117,0.12); }
+  .form-group input::placeholder { color: #aab8b3; }
+
+  .search-btn { margin-top: 20px; width: 100%; padding: 14px; background: var(--green); color: white; border: none; border-radius: 10px; font-size: 16px; font-family: 'Hind Siliguri', sans-serif; font-weight: 600; cursor: pointer; transition: background 0.2s, transform 0.1s; }
+  .search-btn:hover { background: #0F6E56; }
+  .search-btn:active { transform: scale(0.99); }
+  .search-btn:disabled { background: #9FC8BC; cursor: not-allowed; }
+
+  .loading { display: none; text-align: center; padding: 40px; color: var(--muted); }
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--green-light); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 14px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #result-area { display: none; }
+
+  .result-header { background: var(--white); border-radius: var(--radius); padding: 28px 32px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 18px; display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .grade-badge { min-width: 80px; height: 80px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+  .grade-badge .grade-letter { font-size: 30px; line-height: 1; }
+  .grade-badge .grade-label { font-size: 11px; font-weight: 500; margin-top: 3px; opacity: 0.8; }
+  .grade-A-Plus { background: var(--green-light); color: var(--green-dark); }
+  .grade-A { background: #EAF3DE; color: #3B6D11; }
+  .grade-B { background: #E6F1FB; color: #0C447C; }
+  .grade-fail { background: var(--red-light); color: #A32D2D; }
+
+  .student-info h3 { font-family: 'Noto Serif Bengali', serif; font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .student-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+  .meta-pill { background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 12.5px; color: var(--muted); }
+
+  .subject-grid { background: var(--white); border-radius: var(--radius); padding: 24px 28px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 18px; }
+  .subject-grid h4 { font-size: 15px; font-weight: 600; color: var(--green-dark); margin-bottom: 16px; }
+  .subject-table { width: 100%; border-collapse: collapse; }
+  .subject-table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 12px 10px; border-bottom: 1.5px solid var(--border); }
+  .subject-table th:last-child { text-align: center; }
+  .subject-table td { padding: 12px; font-size: 14px; border-bottom: 1px solid #eef4f1; }
+  .subject-table tr:last-child td { border-bottom: none; }
+  .subject-table td:last-child { text-align: center; }
+
+  .grade-chip { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+  .gA { background: var(--green-light); color: var(--green-dark); }
+  .gB { background: #E6F1FB; color: #0C447C; }
+  .gC { background: var(--gold-light); color: #633806; }
+  .gF { background: var(--red-light); color: #791F1F; }
+
+  /* একাধিক রেজাল্ট */
+  .multi-results { background: var(--white); border-radius: var(--radius); padding: 24px 28px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 18px; }
+  .multi-results h4 { font-size: 15px; font-weight: 600; color: var(--green-dark); margin-bottom: 14px; }
+  .result-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eef4f1; gap: 12px; }
+  .result-row:last-child { border-bottom: none; }
+  .result-row-name { font-weight: 500; font-size: 15px; }
+  .result-row-meta { font-size: 13px; color: var(--muted); }
+  .view-btn { padding: 6px 16px; background: var(--green-light); color: var(--green-dark); border: none; border-radius: 6px; font-size: 13px; font-family: 'Hind Siliguri', sans-serif; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+  .view-btn:hover { background: #9FE1CB; }
+
+  .error-box { display: none; background: var(--red-light); border: 1px solid #F7C1C1; border-radius: 10px; padding: 18px 22px; color: #791F1F; font-size: 14.5px; margin-top: 16px; }
+
+  @media (max-width: 600px) {
+    .header-top { padding: 16px 18px; }
+    .exam-tabs { padding: 0 10px; }
+    main { padding: 20px 12px 48px; }
+    .search-card { padding: 20px 16px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .api-bar { padding: 10px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="logo-circle">🇧🇩</div>
+    <div class="header-title">
+      <h1>বাংলাদেশ রেজাল্ট চেকার</h1>
+      <p>শুধু নাম দিয়ে রেজাল্ট খুঁজুন — JSC, SSC, HSC, অনার্স</p>
+    </div>
+  </div>
+  <div class="exam-tabs">
+    <button class="exam-tab active" onclick="setExam('SSC',this)">SSC / সমতুল্য</button>
+    <button class="exam-tab" onclick="setExam('HSC',this)">HSC / সমতুল্য</button>
+    <button class="exam-tab" onclick="setExam('JSC',this)">JSC / JDC</button>
+    <button class="exam-tab" onclick="setExam('PSC',this)">PSC / সমতুল্য</button>
+    <button class="exam-tab" onclick="setExam('Degree',this)">ডিগ্রি / অনার্স</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- API কনফিগ বার -->
+  <div class="api-bar">
+    <div class="api-dot" id="api-dot"></div>
+    <span class="api-status" id="api-status">সার্ভার সংযুক্ত নয়</span>
+    <label>ব্যাকএন্ড URL:</label>
+    <input type="text" id="api-url" value="http://localhost:5000" placeholder="http://localhost:5000" oninput="checkServer()" />
+  </div>
+
+  <div class="search-card">
+    <h2>রেজাল্ট খুঁজুন</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>পরীক্ষার্থীর নাম *</label>
+        <input type="text" id="student-name" placeholder="যেমন: রাহেলা বেগম" />
+      </div>
+      <div class="form-group">
+        <label>পরীক্ষার বছর *</label>
+        <select id="exam-year">
+          <option>2024</option><option>2023</option><option>2022</option>
+          <option>2021</option><option>2020</option><option>2019</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>শিক্ষা বোর্ড *</label>
+        <select id="board">
+          <option value="">— বোর্ড বেছে নিন —</option>
+          <option>ঢাকা</option><option>চট্টগ্রাম</option><option>রাজশাহী</option>
+          <option>যশোর</option><option>কুমিল্লা</option><option>বরিশাল</option>
+          <option>সিলেট</option><option>দিনাজপুর</option><option>ময়মনসিংহ</option>
+          <option>মাদরাসা বোর্ড</option><option>কারিগরি বোর্ড</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>বাবার নাম <span style="color:#aab8b3">(ঐচ্ছিক)</span></label>
+        <input type="text" id="father-name" placeholder="সার্চ সহজ করতে দিন" />
+      </div>
+    </div>
+    <button class="search-btn" onclick="searchResult()">🔍 রেজাল্ট খুঁজুন</button>
+    <div class="error-box" id="error-box"></div>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>রেজাল্ট খোঁজা হচ্ছে...</p>
+  </div>
+
+  <div id="result-area"></div>
+
+</main>
+
+<script>
+let currentExam = 'SSC';
+
+function setExam(exam, btn) {
+  currentExam = exam;
+  document.querySelectorAll('.exam-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  clearResults();
+}
+
+function clearResults() {
+  document.getElementById('result-area').style.display = 'none';
+  document.getElementById('result-area').innerHTML = '';
+  document.getElementById('error-box').style.display = 'none';
+}
+
+function showError(msg) {
+  const b = document.getElementById('error-box');
+  b.textContent = '❌ ' + msg;
+  b.style.display = 'block';
+}
+
+async function checkServer() {
+  const url = document.getElementById('api-url').value.trim();
+  const dot = document.getElementById('api-dot');
+  const status = document.getElementById('api-status');
+  try {
+    const r = await fetch(url + '/api/health', { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      dot.className = 'api-dot connected';
+      status.textContent = 'সার্ভার সংযুক্ত ✅';
+    } else throw new Error();
+  } catch {
+    dot.className = 'api-dot';
+    status.textContent = 'সার্ভার সংযুক্ত নয়';
+  }
+}
+
+async function searchResult() {
+  clearResults();
+  const name = document.getElementById('student-name').value.trim();
+  const board = document.getElementById('board').value;
+  const year = document.getElementById('exam-year').value;
+  const fatherName = document.getElementById('father-name').value.trim();
+  const apiUrl = document.getElementById('api-url').value.trim();
+
+  if (!name) { showError('অনুগ্রহ করে পরীক্ষার্থীর নাম লিখুন।'); return; }
+  if (!board) { showError('অনুগ্রহ করে শিক্ষা বোর্ড বেছে নিন।'); return; }
+
+  const btn = document.querySelector('.search-btn');
+  btn.disabled = true;
+  document.getElementById('loading').style.display = 'block';
+
+  try {
+    const response = await fetch(`${apiUrl}/api/result`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, exam: currentExam, year, board, father_name: fatherName }),
+    });
+
+    const data = await response.json();
+    document.getElementById('loading').style.display = 'none';
+    btn.disabled = false;
+
+    if (data.error) {
+      showError(data.error);
+    } else if (data.multiple_results) {
+      showMultipleResults(data.multiple_results);
+    } else {
+      showSingleResult(data);
+    }
+  } catch (err) {
+    document.getElementById('loading').style.display = 'none';
+    btn.disabled = false;
+    showError('সার্ভারের সাথে সংযোগ হয়নি। app.py চালু আছে কিনা দেখুন।');
+  }
+}
+
+function gradeClass(g) {
+  if (!g) return 'gA';
+  g = g.toUpperCase();
+  if (g.includes('A')) return 'gA';
+  if (g.includes('B')) return 'gB';
+  if (g.includes('C') || g.includes('D')) return 'gC';
+  return 'gF';
+}
+
+function badgeClass(gpa) {
+  const g = parseFloat(gpa);
+  if (g >= 5.0) return 'grade-A-Plus';
+  if (g >= 4.0) return 'grade-A';
+  if (g >= 3.0) return 'grade-B';
+  return 'grade-fail';
+}
+
+function showSingleResult(data) {
+  const area = document.getElementById('result-area');
+  const gpa = data.gpa || '—';
+  const pass = data.pass_status || 'Pass';
+  const isPass = !pass.toLowerCase().includes('fail') && !pass.includes('F');
+
+  area.innerHTML = `
+    <div class="result-header">
+      <div class="grade-badge ${badgeClass(gpa)}">
+        <span class="grade-letter">${data.grade || 'A+'}</span>
+        <span class="grade-label">GPA ${gpa}</span>
+      </div>
+      <div class="student-info">
+        <h3>${data.name || '—'}</h3>
+        <p style="color:var(--muted);font-size:14px">${data.institution || ''}</p>
+        <div class="student-meta">
+          <span class="meta-pill">📋 ${currentExam}</span>
+          <span class="meta-pill">📅 ${document.getElementById('exam-year').value}</span>
+          <span class="meta-pill">🏫 ${document.getElementById('board').value}</span>
+          ${data.roll ? `<span class="meta-pill">🆔 রোল: ${data.roll}</span>` : ''}
+          ${data.father_name ? `<span class="meta-pill">👨 ${data.father_name}</span>` : ''}
+          <span class="meta-pill" style="background:${isPass?'#E1F5EE':'#FCEBEB'};border-color:${isPass?'#9FE1CB':'#F7C1C1'};color:${isPass?'#085041':'#791F1F'}">
+            ${isPass ? '✅ উত্তীর্ণ' : '❌ অনুত্তীর্ণ'}
+          </span>
+        </div>
+      </div>
+    </div>
+    ${data.subjects && data.subjects.length > 0 ? `
+    <div class="subject-grid">
+      <h4>বিষয়ভিত্তিক ফলাফল</h4>
+      <table class="subject-table">
+        <thead><tr><th>বিষয়</th><th>নম্বর</th><th>গ্রেড</th></tr></thead>
+        <tbody>
+          ${data.subjects.map(s => `
+            <tr>
+              <td>${s.subject}</td>
+              <td style="font-weight:500">${s.marks || '—'}</td>
+              <td><span class="grade-chip ${gradeClass(s.grade)}">${s.grade || '—'}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>` : ''}
+  `;
+  area.style.display = 'block';
+  area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showMultipleResults(results) {
+  const area = document.getElementById('result-area');
+  area.innerHTML = `
+    <div class="multi-results">
+      <h4>🔎 ${results.length}টি রেজাল্ট পাওয়া গেছে</h4>
+      ${results.map((r, i) => `
+        <div class="result-row">
+          <div>
+            <div class="result-row-name">${r.name}</div>
+            <div class="result-row-meta">রোল: ${r.roll || '—'} &nbsp;|&nbsp; GPA: ${r.gpa || '—'}</div>
+          </div>
+          <button class="view-btn" onclick="fetchByRoll('${r.roll}')">বিস্তারিত দেখুন</button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  area.style.display = 'block';
+}
+
+async function fetchByRoll(roll) {
+  const apiUrl = document.getElementById('api-url').value.trim();
+  document.getElementById('loading').style.display = 'block';
+  try {
+    const r = await fetch(`${apiUrl}/api/result/roll`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        roll, exam: currentExam,
+        year: document.getElementById('exam-year').value,
+        board: document.getElementById('board').value,
+      }),
+    });
+    const data = await r.json();
+    document.getElementById('loading').style.display = 'none';
+    if (data.error) showError(data.error);
+    else showSingleResult(data);
+  } catch {
+    document.getElementById('loading').style.display = 'none';
+    showError('ডেটা আনা সম্ভব হয়নি।');
+  }
+}
+
+// পেজ লোডে সার্ভার চেক
+window.onload = () => checkServer();
+</script>
+</body>
+</html>
